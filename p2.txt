@@ -1,0 +1,270 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define MAX_DRIVERS 5
+#define MAX_RACES 10
+
+// Structure to hold race statistics for a driver
+struct RaceStats {
+    char driverName[50];
+    char carCompany[50]; // Car company name
+    char carColor[20];   // Car color
+    int raceCount;
+    double lapTimes[MAX_RACES];
+    double fuelConsumption[MAX_RACES]; // Fuel consumed in liters for each race
+    double courseSize; // Size of the race course in kilometers
+};
+
+// Function to calculate the average lap time
+double calculateAverageLapTime(double lapTimes[], int count) {
+    double total = 0.0;
+    for (int i = 0; i < count; i++) {
+        total += lapTimes[i];
+    }
+    return total / count;
+}
+
+// Function to find the fastest and slowest lap times
+void findFastestAndSlowestLap(double lapTimes[], int count, double *fastest, double *slowest) {
+    *fastest = lapTimes[0];
+    *slowest = lapTimes[0];
+
+    for (int i = 1; i < count; i++) {
+        if (lapTimes[i] < *fastest) {
+            *fastest = lapTimes[i];
+        }
+        if (lapTimes[i] > *slowest) {
+            *slowest = lapTimes[i];
+        }
+    }
+}
+
+// Function to sort lap times
+void sortLapTimes(double lapTimes[], int count) {
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            if (lapTimes[j] > lapTimes[j + 1]) {
+                double temp = lapTimes[j];
+                lapTimes[j] = lapTimes[j + 1];
+                lapTimes[j + 1] = temp;
+            }
+        }
+    }
+}
+
+// Function to save data to a file in CSV format
+void saveDataToFile(struct RaceStats drivers[], int numDrivers) {
+    FILE *file = fopen("race_stats.csv", "w");
+    if (!file) {
+        printf("Error opening file for writing.\n");
+        return;
+    }
+
+    fprintf(file, "Driver,Car Company,Car Color,Race Count,Course Size,Lap Times,Fuel Consumption\n");
+    
+    for (int i = 0; i < numDrivers; i++) {
+        fprintf(file, "%s,%s,%s,%d,%.2f,", drivers[i].driverName, drivers[i].carCompany,
+                drivers[i].carColor, drivers[i].raceCount, drivers[i].courseSize);
+        
+        for (int j = 0; j < drivers[i].raceCount; j++) {
+            fprintf(file, "%.2f", drivers[i].lapTimes[j]);
+            if (j < drivers[i].raceCount - 1) fprintf(file, ";"); // Use semicolon as delimiter
+        }
+
+        fprintf(file, ",");
+        
+        for (int j = 0; j < drivers[i].raceCount; j++) {
+            fprintf(file, "%.2f", drivers[i].fuelConsumption[j]);
+            if (j < drivers[i].raceCount - 1) fprintf(file, ";"); // Use semicolon as delimiter
+        }
+
+        fprintf(file, "\n");
+    }
+
+    fclose(file);
+    printf("Data saved to race_stats.csv\n");
+}
+
+// Function to display a histogram of lap times
+void displayLapTimeHistogram(double lapTimes[], int count) {
+    int bins[10] = {0}; // Array to hold counts for each bin (0-9, 10-19, ..., 90-99)
+    
+    for (int i = 0; i < count; i++) {
+        if (lapTimes[i] < 100) { // Assuming max lap time is less than 100 seconds
+            bins[(int)(lapTimes[i] / 10)]++;
+        }
+    }
+
+    printf("\nLap Time Distribution Histogram:\n");
+    for (int i = 0; i < 10; i++) {
+        printf("%2d - %2d: ", i * 10, (i + 1) * 10);
+        for (int j = 0; j < bins[i]; j++) {
+            printf("*");
+        }
+        printf(" (%d)\n", bins[i]);
+    }
+}
+
+int main() {
+    struct RaceStats drivers[MAX_DRIVERS];
+    int numDrivers = 0;
+
+    while (numDrivers < MAX_DRIVERS) {
+        printf("\nEnter driver's name (or type 'exit' to finish): ");
+        scanf("%49s", drivers[numDrivers].driverName);
+        
+        // Exit condition
+        if (strcmp(drivers[numDrivers].driverName, "exit") == 0) {
+            break;
+        }
+
+        // Input car company and color
+        printf("Enter car company: ");
+        scanf("%49s", drivers[numDrivers].carCompany);
+        
+        printf("Enter car color: ");
+        scanf("%19s", drivers[numDrivers].carColor);
+
+        printf("Enter number of races (max %d): ", MAX_RACES);
+        
+        while(1) { // Improved input validation loop
+            scanf("%d", &drivers[numDrivers].raceCount);
+            if(drivers[numDrivers].raceCount > 0 && drivers[numDrivers].raceCount <= MAX_RACES)
+                break;
+            else 
+                printf("Number of races must be between 1 and %d. Please try again: ", MAX_RACES);
+        }
+
+        // Input course size with validation
+        printf("Enter course size in kilometers: ");
+        
+        while(1) { // Improved input validation loop
+            scanf("%lf", &drivers[numDrivers].courseSize);
+            if(drivers[numDrivers].courseSize > 0)
+                break;
+            else 
+                printf("Course size must be positive. Please try again: ");
+        }
+
+        // Input lap times and fuel consumption for each race with validation
+        for (int i = 0; i < drivers[numDrivers].raceCount; i++) {
+            double lapTime;
+            do {
+                printf("Enter lap time for race %d (in seconds, must be positive): ", i + 1);
+                scanf("%lf", &lapTime);
+                if (lapTime <= 0) {
+                    printf("Lap time must be positive. Please try again.\n");
+                }
+            } while (lapTime <= 0);
+            drivers[numDrivers].lapTimes[i] = lapTime;
+
+            double fuelUsed;
+            do {
+                printf("Enter fuel consumption for race %d (in liters, must be positive): ", i + 1);
+                scanf("%lf", &fuelUsed);
+                if (fuelUsed <= 0) {
+                    printf("Fuel consumption must be positive. Please try again.\n");
+                }
+            } while (fuelUsed <= 0);
+            drivers[numDrivers].fuelConsumption[i] = fuelUsed;
+        }
+
+        numDrivers++;
+    }
+
+    // Display results for each driver
+    printf("\nDriver Statistics:\n");
+    
+    // Array to hold average times for ranking and total distance calculation
+    double averageLapTimes[MAX_DRIVERS];
+    
+    double bestAverageLapTime = _DBL_MAX_;
+    char bestDriver[50];
+
+    for (int i = 0; i < numDrivers; i++) {
+        
+         double averageLapTime = calculateAverageLapTime(drivers[i].lapTimes, drivers[i].raceCount);
+         double fastestLap, slowestLap;
+         findFastestAndSlowestLap(drivers[i].lapTimes, drivers[i].raceCount, &fastestLap, &slowestLap);
+
+         averageLapTimes[i] = averageLapTime;
+
+         // Calculate total distance covered and total fuel consumed
+         double totalDistance = drivers[i].courseSize * drivers[i].raceCount;
+         double totalFuelConsumed = 0.0;
+         double bestLapTime = fastestLap;
+
+         for(int j=0; j<drivers[i].raceCount; j++){
+             totalFuelConsumed += drivers[i].fuelConsumption[j];
+         }
+
+         double averageFuelConsumption = totalFuelConsumed / drivers[i].raceCount;
+
+         printf("\nDriver: %s\n", drivers[i].driverName);
+         printf("Car Company: %s\n", drivers[i].carCompany);
+         printf("Car Color: %s\n", drivers[i].carColor);
+
+         printf("Average Lap Time: %.2f seconds\n", averageLapTime);
+         printf("Fastest Lap Time: %.2f seconds\n", fastestLap);
+         printf("Slowest Lap Time: %.2f seconds\n", slowestLap);
+
+         printf("Total Distance Covered: %.2f km\n", totalDistance);
+         printf("Total Fuel Consumed: %.2f liters\n", totalFuelConsumed);
+         printf("Average Fuel Consumption per Race: %.2f liters\n", averageFuelConsumption);
+
+         // Sort and display lap times
+         sortLapTimes(drivers[i].lapTimes, drivers[i].raceCount);
+
+         printf("Sorted Lap Times: ");
+         for (int j = 0; j < drivers[i].raceCount; j++) {
+             printf("%.2f ", drivers[i].lapTimes[j]);
+         }
+
+         // Update best driver based on average lap time
+         if (averageLapTime < bestAverageLapTime) {
+             bestAverageLapTime = averageLapTime;
+             strcpy(bestDriver, drivers[i].driverName);
+         }
+
+         // Display histogram of lap times
+         displayLapTimeHistogram(drivers[i].lapTimes, drivers[i].raceCount);
+
+         printf("\n");
+     }
+
+     // Ranking the drivers based on average lap time
+     printf("\nDriver Rankings based on Average Lap Time:\n");
+
+     for (int i = 0; i < numDrivers; i++) {
+         for (int j = i + 1; j < numDrivers; j++) {
+             if (averageLapTimes[i] > averageLapTimes[j]) {
+                 double tempAvg = averageLapTimes[i];
+                 averageLapTimes[i] = averageLapTimes[j];
+                 averageLapTimes[j] = tempAvg;
+
+                 struct RaceStats tempDriver = drivers[i];
+                 drivers[i] = drivers[j];
+                 drivers[j] = tempDriver;
+             }
+         }
+     }
+
+     for (int i = 0; i < numDrivers; i++) {
+         printf("%d. %s - Average Lap Time: %.2f seconds\n", i + 1, drivers[i].driverName, averageLapTimes[i]);
+     }
+
+     // Display best overall driver
+     printf("\nBest Overall Driver: %s with an Average Lap Time of %.2f seconds\n", bestDriver, bestAverageLapTime);
+
+     // Optionally save data to a file
+     char saveOption;
+     printf("\nWould you like to save the data to a file? (y/n): ");
+     scanf(" %c", &saveOption);
+
+     if (saveOption == 'y' || saveOption == 'Y') {
+         saveDataToFile(drivers, numDrivers);
+     }
+
+     return 0;
+}
